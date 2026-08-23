@@ -11,6 +11,7 @@ out/
 .turbo/
 .expo/
 *.tsbuildinfo
+next-env.d.ts
 
 # Env & secrets
 .env
