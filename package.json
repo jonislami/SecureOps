@@ -17,6 +17,7 @@
     "lint": "turbo run lint",
     "typecheck": "turbo run typecheck",
     "test": "turbo run test",
+    "db:migrate": "node scripts/db-migrate.mjs",
     "db:diff": "supabase db diff",
     "db:push": "supabase db push",
     "db:reset": "supabase db reset"
