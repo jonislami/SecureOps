@@ -46,9 +46,9 @@ if (signInErr) {
 }
 console.log(`Signed in as ${auth.user?.email} (${auth.user?.id}).`);
 
-// Start position (default: central Tirana).
-let lng = lng0 ? Number(lng0) : 19.8187;
-let lat = lat0 ? Number(lat0) : 41.3275;
+// Start position (default: central Ferizaj, Kosovo — the company's base).
+let lng = lng0 ? Number(lng0) : 21.1553;
+let lat = lat0 ? Number(lat0) : 42.3706;
 let heading = Math.random() * 360;
 
 const INTERVAL_MS = 3000;

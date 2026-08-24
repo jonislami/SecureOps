@@ -3,7 +3,7 @@
 import { useEffect, useRef } from 'react';
 import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
-import { resolveMapStyle } from '@/lib/env';
+import { resolveMapStyle, MAP_DEFAULT } from '@/lib/env';
 
 export interface MapMarker {
   id: string;
@@ -27,8 +27,8 @@ interface LiveMapProps {
  * style URL). Swapping to Mapbox later is a localized change here.
  */
 export function LiveMap({
-  center = [19.8187, 41.3275], // Tirana as a sensible default
-  zoom = 12,
+  center = MAP_DEFAULT.center, // company operating area (Ferizaj, Kosovo)
+  zoom = MAP_DEFAULT.zoom,
   markers = [],
   className,
 }: LiveMapProps) {

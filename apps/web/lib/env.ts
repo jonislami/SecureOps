@@ -6,6 +6,19 @@ export const env = {
   // keyless free style (OpenFreeMap) so the map works with zero setup.
   MAPTILER_KEY: process.env.NEXT_PUBLIC_MAPTILER_KEY ?? '',
   MAP_STYLE_URL: process.env.NEXT_PUBLIC_MAP_STYLE_URL ?? '',
+  // Default map view — the company's operating area. Defaults to Ferizaj, Kosovo.
+  MAP_CENTER_LNG: process.env.NEXT_PUBLIC_MAP_CENTER_LNG ?? '',
+  MAP_CENTER_LAT: process.env.NEXT_PUBLIC_MAP_CENTER_LAT ?? '',
+  MAP_ZOOM: process.env.NEXT_PUBLIC_MAP_ZOOM ?? '',
+};
+
+/** Company operating area — Ferizaj, Kosovo — overridable via env. */
+export const MAP_DEFAULT = {
+  center: [
+    env.MAP_CENTER_LNG ? Number(env.MAP_CENTER_LNG) : 21.1553,
+    env.MAP_CENTER_LAT ? Number(env.MAP_CENTER_LAT) : 42.3706,
+  ] as [number, number],
+  zoom: env.MAP_ZOOM ? Number(env.MAP_ZOOM) : 13,
 };
 
 /** Keyless, free MapLibre style — no account required. */
