@@ -14,14 +14,14 @@
     "@react-native-async-storage/async-storage": "^2.1.0",
     "@sentinel/shared": "workspace:*",
     "@supabase/supabase-js": "^2.45.0",
-    "expo": "~56.0.20",
-    "expo-status-bar": "~56.0.0",
-    "react": "19.2.3",
-    "react-native": "0.85.3",
+    "expo": "~54.0.37",
+    "expo-status-bar": "~3.0.9",
+    "react": "19.1.0",
+    "react-native": "0.81.5",
     "react-native-url-polyfill": "^2.0.0"
   },
   "devDependencies": {
     "@types/react": "~19.2.2",
-    "typescript": "~6.0.3"
+    "typescript": "~5.9.3"
   }
 }
