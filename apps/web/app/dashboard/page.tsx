@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { ShieldCheck, MapPin, Users, ClipboardList, AlertTriangle } from 'lucide-react';
 import { ROLE_LABELS, primarySurface } from '@sentinel/shared';
@@ -81,7 +82,8 @@ export default async function DashboardPage() {
             icon={MapPin}
             title="Live Map"
             desc="Real-time field locations"
-            phase="Phase 2"
+            phase="Open map"
+            href="/map"
           />
           <FeatureTile
             icon={Users}
@@ -112,14 +114,16 @@ function FeatureTile({
   title,
   desc,
   phase,
+  href,
 }: {
   icon: React.ComponentType<{ className?: string }>;
   title: string;
   desc: string;
   phase: string;
+  href?: string;
 }) {
-  return (
-    <Card className={cn('opacity-70')}>
+  const card = (
+    <Card className={cn('h-full transition-colors', href ? 'hover:border-primary' : 'opacity-70')}>
       <CardContent className="space-y-2 p-5">
         <Icon className="h-6 w-6 text-primary" />
         <div className="font-medium">{title}</div>
@@ -130,4 +134,6 @@ function FeatureTile({
       </CardContent>
     </Card>
   );
+
+  return href ? <Link href={href}>{card}</Link> : card;
 }
