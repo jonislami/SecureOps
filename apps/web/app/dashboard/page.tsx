@@ -94,9 +94,10 @@ export default async function DashboardPage() {
           />
           <FeatureTile
             icon={Users}
-            title="Staff & Shifts"
-            desc="Guards, patrols, technicians"
-            phase="Phase 3"
+            title="Shifts"
+            desc="Assign guards to posts"
+            phase="Manage shifts"
+            href="/shifts"
           />
           <FeatureTile
             icon={ClipboardList}

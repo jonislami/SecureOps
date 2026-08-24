@@ -24,7 +24,8 @@ export async function requestForegroundPermission(): Promise<boolean> {
  * Foreground-only (Expo Go); true background tracking needs an EAS dev build.
  */
 export async function startSharing(
-  onUpdate?: (u: ShareUpdate) => void
+  onUpdate?: (u: ShareUpdate) => void,
+  shiftId?: string | null
 ): Promise<{ ok: boolean; reason?: string }> {
   const granted = await requestForegroundPermission();
   if (!granted) return { ok: false, reason: 'Location permission denied' };
@@ -47,7 +48,7 @@ export async function startSharing(
         isMock: loc.mocked ?? false,
         recordedAt: new Date(loc.timestamp).toISOString(),
       };
-      const { error } = await ingestLocations(supabase, [ping], null);
+      const { error } = await ingestLocations(supabase, [ping], shiftId ?? null);
       onUpdate?.({
         lng: ping.lng,
         lat: ping.lat,

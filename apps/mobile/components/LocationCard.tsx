@@ -8,7 +8,7 @@ import { colors } from '../theme';
  * control center every ~10 s. Works in Expo Go (foreground only); background
  * tracking needs an EAS dev build.
  */
-export function LocationCard() {
+export function LocationCard({ shiftId }: { shiftId?: string | null }) {
   const [sharing, setSharing] = useState(false);
   const [busy, setBusy] = useState(false);
   const [last, setLast] = useState<ShareUpdate | null>(null);
@@ -37,7 +37,7 @@ export function LocationCard() {
       setLast(u);
       setCount((c) => c + 1);
       if (u.error) setError(u.error);
-    });
+    }, shiftId);
     setBusy(false);
     if (res.ok) setSharing(true);
     else setError(res.reason ?? 'Could not start location sharing');

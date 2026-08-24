@@ -1,7 +1,10 @@
+import { useCallback, useEffect, useState } from 'react';
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { ROLE_LABELS, primarySurface, isFieldRole } from '@sentinel/shared';
 import { useAuth } from '../lib/auth';
+import { supabase } from '../lib/supabase';
 import { LocationCard } from '../components/LocationCard';
+import { ShiftCard, type Shift } from '../components/ShiftCard';
 import { colors } from '../theme';
 
 /** Feature availability per phase — the field capabilities come later. */
@@ -19,6 +22,37 @@ export function HomeScreen() {
   const name = profile?.full_name ?? session?.user.email ?? 'Field Officer';
   const hasRoles = roles.length > 0;
   const canShare = roles.some(isFieldRole);
+
+  const [shift, setShift] = useState<Shift | null>(null);
+  const uid = session?.user.id;
+
+  const loadShift = useCallback(async () => {
+    if (!uid) return;
+    // The current shift: prefer an active one, else the next scheduled.
+    const { data } = await supabase
+      .from('shifts')
+      .select('id, site_id, status, starts_at, ends_at, sites(name)')
+      .eq('employee_id', uid)
+      .in('status', ['active', 'scheduled'])
+      .order('starts_at', { ascending: true })
+      .limit(10);
+    const rows = (data ?? []) as unknown as Array<Record<string, unknown>>;
+    const mapped: Shift[] = rows.map((r) => ({
+      id: r.id as string,
+      site_id: (r.site_id as string | null) ?? null,
+      site_name: ((r.sites as { name?: string } | null)?.name) ?? null,
+      status: r.status as string,
+      starts_at: r.starts_at as string,
+      ends_at: r.ends_at as string,
+    }));
+    setShift(mapped.find((s) => s.status === 'active') ?? mapped[0] ?? null);
+  }, [uid]);
+
+  useEffect(() => {
+    if (canShare) loadShift();
+  }, [canShare, loadShift]);
+
+  const activeShiftId = shift?.status === 'active' ? shift.id : null;
 
   return (
     <View style={styles.container}>
@@ -58,8 +92,9 @@ export function HomeScreen() {
 
         {canShare && (
           <>
-            <Text style={styles.sectionTitle}>On shift</Text>
-            <LocationCard />
+            <Text style={styles.sectionTitle}>Shift</Text>
+            <ShiftCard shift={shift} onChanged={loadShift} />
+            <LocationCard shiftId={activeShiftId} />
           </>
         )}
 
