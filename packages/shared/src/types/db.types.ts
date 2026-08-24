@@ -692,6 +692,8 @@ export type Database = {
           created_at: string;
           updated_at: string;
           deleted_at: string | null;
+          lng: number | null;
+          lat: number | null;
         };
         Insert: {
           id?: string;
@@ -706,6 +708,8 @@ export type Database = {
           created_at?: string;
           updated_at?: string;
           deleted_at?: string | null;
+          lng?: number | null;
+          lat?: number | null;
         };
         Update: {
           id?: string;
@@ -720,6 +724,8 @@ export type Database = {
           created_at?: string;
           updated_at?: string;
           deleted_at?: string | null;
+          lng?: number | null;
+          lat?: number | null;
         };
       };
       task_events: {

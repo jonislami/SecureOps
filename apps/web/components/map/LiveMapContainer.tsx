@@ -2,7 +2,15 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
-import { LiveMap, type MapMarker } from './LiveMap';
+import { LiveMap, type MapMarker, type MapCircle } from './LiveMap';
+
+interface SiteRow {
+  id: string;
+  name: string;
+  lng: number;
+  lat: number;
+  radius_m: number | null;
+}
 
 interface LivePos {
   employee_id: string;
@@ -21,7 +29,33 @@ interface LivePos {
 export function LiveMapContainer() {
   const supabase = useMemo(() => createClient(), []);
   const [positions, setPositions] = useState<Record<string, LivePos>>({});
+  const [sites, setSites] = useState<SiteRow[]>([]);
   const namesRef = useRef<Record<string, string>>({});
+
+  // Load sites (with geofence radius) once — shown as reference points + rings.
+  useEffect(() => {
+    let active = true;
+    (async () => {
+      const { data } = await supabase
+        .from('sites')
+        .select('id, name, lng, lat, geofences(radius_m)')
+        .not('lng', 'is', null);
+      if (!active || !data) return;
+      setSites(
+        (data as unknown as Array<Record<string, unknown>>).map((r) => ({
+          id: r.id as string,
+          name: r.name as string,
+          lng: r.lng as number,
+          lat: r.lat as number,
+          radius_m:
+            ((r.geofences as Array<{ radius_m?: number }> | null)?.[0]?.radius_m as number) ?? null,
+        }))
+      );
+    })();
+    return () => {
+      active = false;
+    };
+  }, [supabase]);
 
   useEffect(() => {
     let active = true;
@@ -83,7 +117,7 @@ export function LiveMapContainer() {
     };
   }, [supabase]);
 
-  const markers: MapMarker[] = Object.values(positions).map((p) => ({
+  const personMarkers: MapMarker[] = Object.values(positions).map((p) => ({
     id: p.employee_id,
     lng: p.lng,
     lat: p.lat,
@@ -91,12 +125,27 @@ export function LiveMapContainer() {
     color: p.is_moving ? '#22C55E' : '#3B82F6',
   }));
 
+  const siteMarkers: MapMarker[] = sites.map((s) => ({
+    id: `site-${s.id}`,
+    lng: s.lng,
+    lat: s.lat,
+    label: `${s.name} (site)`,
+    color: '#F59E0B',
+  }));
+
+  const circles: MapCircle[] = sites
+    .filter((s) => s.radius_m)
+    .map((s) => ({ id: s.id, lng: s.lng, lat: s.lat, radiusM: s.radius_m as number, color: '#F59E0B' }));
+
+  const markers = [...siteMarkers, ...personMarkers];
+
   return (
     <>
-      <LiveMap markers={markers} className="absolute inset-0 h-full w-full" />
+      <LiveMap markers={markers} circles={circles} className="absolute inset-0 h-full w-full" />
       <div className="pointer-events-none absolute left-3 top-3 rounded-md border bg-card/90 px-3 py-2 text-sm shadow">
-        <span className="font-medium">{markers.length}</span> on map
-        {markers.length === 0 && (
+        <span className="font-medium">{personMarkers.length}</span> on shift ·{' '}
+        <span className="font-medium">{sites.length}</span> sites
+        {personMarkers.length === 0 && (
           <div className="text-xs text-muted-foreground">Waiting for field positions…</div>
         )}
       </div>
