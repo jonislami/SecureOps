@@ -117,6 +117,7 @@ export function LiveMapContainer() {
     };
   }, [supabase]);
 
+  // Guards are dots (green = moving, blue = stationary).
   const personMarkers: MapMarker[] = Object.values(positions).map((p) => ({
     id: p.employee_id,
     lng: p.lng,
@@ -125,30 +126,51 @@ export function LiveMapContainer() {
     color: p.is_moving ? '#22C55E' : '#3B82F6',
   }));
 
-  const siteMarkers: MapMarker[] = sites.map((s) => ({
-    id: `site-${s.id}`,
-    lng: s.lng,
-    lat: s.lat,
-    label: `${s.name} (site)`,
-    color: '#F59E0B',
-  }));
-
+  // A site is "covered" if any guard's live position is inside its geofence.
+  const people = Object.values(positions);
+  let covered = 0;
   const circles: MapCircle[] = sites
     .filter((s) => s.radius_m)
-    .map((s) => ({ id: s.id, lng: s.lng, lat: s.lat, radiusM: s.radius_m as number, color: '#F59E0B' }));
-
-  const markers = [...siteMarkers, ...personMarkers];
+    .map((s) => {
+      const isCovered = people.some(
+        (p) => distanceM(p.lat, p.lng, s.lat, s.lng) <= (s.radius_m as number)
+      );
+      if (isCovered) covered += 1;
+      // Covered = green ring (a guard is on post). Uncovered = red ring.
+      return {
+        id: s.id,
+        lng: s.lng,
+        lat: s.lat,
+        radiusM: s.radius_m as number,
+        color: isCovered ? '#22C55E' : '#EF4444',
+      };
+    });
+  const uncovered = circles.length - covered;
 
   return (
     <>
-      <LiveMap markers={markers} circles={circles} className="absolute inset-0 h-full w-full" />
-      <div className="pointer-events-none absolute left-3 top-3 rounded-md border bg-card/90 px-3 py-2 text-sm shadow">
-        <span className="font-medium">{personMarkers.length}</span> on shift ·{' '}
-        <span className="font-medium">{sites.length}</span> sites
-        {personMarkers.length === 0 && (
-          <div className="text-xs text-muted-foreground">Waiting for field positions…</div>
-        )}
+      <LiveMap markers={personMarkers} circles={circles} className="absolute inset-0 h-full w-full" />
+      <div className="pointer-events-none absolute left-3 top-3 space-y-0.5 rounded-md border bg-card/90 px-3 py-2 text-sm shadow">
+        <div>
+          <span className="font-medium text-emerald-600">{covered}</span> covered ·{' '}
+          <span className="font-medium text-red-600">{uncovered}</span> uncovered
+        </div>
+        <div className="text-xs text-muted-foreground">
+          {personMarkers.length} guard{personMarkers.length === 1 ? '' : 's'} on shift
+        </div>
       </div>
     </>
   );
+}
+
+/** Great-circle distance in metres between two lat/lng points (haversine). */
+function distanceM(lat1: number, lng1: number, lat2: number, lng2: number): number {
+  const R = 6371000;
+  const toRad = (d: number) => (d * Math.PI) / 180;
+  const dLat = toRad(lat2 - lat1);
+  const dLng = toRad(lng2 - lng1);
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLng / 2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(a));
 }
