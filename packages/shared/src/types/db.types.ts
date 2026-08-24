@@ -263,6 +263,8 @@ export type Database = {
           is_moving: boolean | null;
           recorded_at: string;
           updated_at: string;
+          lng: number | null;
+          lat: number | null;
         };
         Insert: {
           employee_id: string;
@@ -275,6 +277,8 @@ export type Database = {
           is_moving?: boolean | null;
           recorded_at: string;
           updated_at?: string;
+          lng?: number | null;
+          lat?: number | null;
         };
         Update: {
           employee_id?: string;
@@ -287,6 +291,8 @@ export type Database = {
           is_moving?: boolean | null;
           recorded_at?: string;
           updated_at?: string;
+          lng?: number | null;
+          lat?: number | null;
         };
       };
       geofence_events: {

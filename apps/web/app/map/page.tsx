@@ -1,15 +1,9 @@
 import Link from 'next/link';
 import { ArrowLeft, MapPin } from 'lucide-react';
 import { resolveMapStyle } from '@/lib/env';
-import { LiveMap, type MapMarker } from '@/components/map/LiveMap';
+import { LiveMapContainer } from '@/components/map/LiveMapContainer';
 
 export default function MapPage() {
-  // Placeholder marker so the map is visibly working before GPS data exists.
-  // Real markers (current_location + sites) are wired in during Phase 2.
-  const demoMarkers: MapMarker[] = [
-    { id: 'demo', lng: 19.8187, lat: 41.3275, label: 'Example marker (demo) — Tirana', color: '#3B82F6' },
-  ];
-
   const usingFreeTiles = resolveMapStyle().includes('openfreemap');
 
   return (
@@ -35,7 +29,7 @@ export default function MapPage() {
       </header>
 
       <div className="relative flex-1">
-        <LiveMap markers={demoMarkers} className="absolute inset-0 h-full w-full" />
+        <LiveMapContainer />
       </div>
     </div>
   );
