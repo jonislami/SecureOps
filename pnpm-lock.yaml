@@ -8,6 +8,9 @@ importers:
 
   .:
     devDependencies:
+      '@supabase/supabase-js':
+        specifier: ^2.45.0
+        version: 2.112.3
       pg:
         specifier: ^8.23.0
         version: 8.23.0
