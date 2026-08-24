@@ -1,5 +1,5 @@
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { ROLE_LABELS, isFieldRole, primarySurface } from '@sentinel/shared';
+import { ROLE_LABELS, primarySurface } from '@sentinel/shared';
 import { useAuth } from '../lib/auth';
 import { colors } from '../theme';
 
@@ -18,7 +18,6 @@ export function HomeScreen() {
 
   const name = profile?.full_name ?? session?.user.email ?? 'Field Officer';
   const hasRoles = roles.length > 0;
-  const canUseField = roles.some(isFieldRole);
 
   return (
     <View style={styles.container}>
@@ -55,15 +54,6 @@ export function HomeScreen() {
             Access: {primarySurface(roles)}
           </Text>
         </View>
-
-        {!canUseField && hasRoles && (
-          <View style={styles.warn}>
-            <Text style={styles.warnText}>
-              Your role is an office/oversight role — the control center web app is
-              your primary surface.
-            </Text>
-          </View>
-        )}
 
         <Text style={styles.sectionTitle}>Field tools</Text>
         <View style={styles.grid}>

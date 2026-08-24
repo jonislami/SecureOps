@@ -51,12 +51,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
 
     const { data: sub } = supabase.auth.onAuthStateChange(async (_event, next) => {
+      setLoading(true);
       setSession(next);
       if (next) await loadProfileAndRoles(next.user.id);
       else {
         setProfile(null);
         setRoles([]);
       }
+      setLoading(false);
     });
 
     return () => sub.subscription.unsubscribe();
