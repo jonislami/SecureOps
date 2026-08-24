@@ -117,18 +117,35 @@ export function LiveMap({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Sync markers.
+  // Sync markers — a colored dot with an always-visible name label beside it.
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
     markerObjs.current.forEach((m) => m.remove());
     markerObjs.current = [];
     for (const mk of markers) {
-      const marker = new maplibregl.Marker({ color: mk.color ?? '#3B82F6' }).setLngLat([
+      const el = document.createElement('div');
+      el.style.cssText = 'display:flex;align-items:center;gap:5px;cursor:default;';
+
+      const dot = document.createElement('div');
+      dot.style.cssText = `width:14px;height:14px;border-radius:50%;background:${
+        mk.color ?? '#3B82F6'
+      };border:2px solid #fff;box-shadow:0 0 0 1px rgba(0,0,0,.3);flex:0 0 auto;`;
+      el.appendChild(dot);
+
+      if (mk.label) {
+        const label = document.createElement('span');
+        label.textContent = mk.label;
+        label.style.cssText =
+          'background:rgba(17,24,39,.85);color:#fff;font-size:11px;font-weight:600;' +
+          'padding:2px 6px;border-radius:9999px;white-space:nowrap;line-height:1.3;';
+        el.appendChild(label);
+      }
+
+      const marker = new maplibregl.Marker({ element: el, anchor: 'left' }).setLngLat([
         mk.lng,
         mk.lat,
       ]);
-      if (mk.label) marker.setPopup(new maplibregl.Popup({ offset: 24 }).setText(mk.label));
       marker.addTo(map);
       markerObjs.current.push(marker);
     }
