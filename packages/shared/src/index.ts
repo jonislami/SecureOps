@@ -37,3 +37,10 @@ export {
   type LocationPingInput,
   type LocationBatchInput,
 } from './schemas/location';
+
+// Location ingest helper
+export {
+  ingestLocations,
+  type IngestPing,
+  type IngestResult,
+} from './location/ingest';

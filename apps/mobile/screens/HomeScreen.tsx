@@ -1,12 +1,12 @@
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { ROLE_LABELS, primarySurface } from '@sentinel/shared';
+import { ROLE_LABELS, primarySurface, isFieldRole } from '@sentinel/shared';
 import { useAuth } from '../lib/auth';
+import { LocationCard } from '../components/LocationCard';
 import { colors } from '../theme';
 
 /** Feature availability per phase — the field capabilities come later. */
 const FIELD_FEATURES = [
   { title: 'My Shift', desc: 'Start / end shift, see your post', phase: 'Phase 3' },
-  { title: 'Location', desc: 'Background GPS while on shift', phase: 'Phase 2' },
   { title: 'Attendance', desc: 'Geofenced check-in / check-out', phase: 'Phase 3' },
   { title: 'Patrol', desc: 'Checkpoint scans', phase: 'Phase 4' },
   { title: 'Tasks', desc: 'Work assigned to you', phase: 'Phase 7' },
@@ -18,6 +18,7 @@ export function HomeScreen() {
 
   const name = profile?.full_name ?? session?.user.email ?? 'Field Officer';
   const hasRoles = roles.length > 0;
+  const canShare = roles.some(isFieldRole);
 
   return (
     <View style={styles.container}>
@@ -54,6 +55,13 @@ export function HomeScreen() {
             Access: {primarySurface(roles)}
           </Text>
         </View>
+
+        {canShare && (
+          <>
+            <Text style={styles.sectionTitle}>On shift</Text>
+            <LocationCard />
+          </>
+        )}
 
         <Text style={styles.sectionTitle}>Field tools</Text>
         <View style={styles.grid}>

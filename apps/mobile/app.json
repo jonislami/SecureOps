@@ -25,6 +25,14 @@
     "web": {
       "favicon": "./assets/favicon.png"
     },
+    "plugins": [
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Sentinel uses your location to show your position to the control center while you are on shift."
+        }
+      ]
+    ],
     "extra": {
       "eas": {}
     }
