@@ -700,6 +700,8 @@ export type Database = {
           deleted_at: string | null;
           lng: number | null;
           lat: number | null;
+          source_url: string | null;
+          site_type: Database["public"]["Enums"]["site_type"];
         };
         Insert: {
           id?: string;
@@ -716,6 +718,8 @@ export type Database = {
           deleted_at?: string | null;
           lng?: number | null;
           lat?: number | null;
+          source_url?: string | null;
+          site_type?: Database["public"]["Enums"]["site_type"];
         };
         Update: {
           id?: string;
@@ -732,6 +736,8 @@ export type Database = {
           deleted_at?: string | null;
           lng?: number | null;
           lat?: number | null;
+          source_url?: string | null;
+          site_type?: Database["public"]["Enums"]["site_type"];
         };
       };
       task_events: {
@@ -954,6 +960,7 @@ export type Database = {
       incident_type: "sos" | "panic" | "alarm" | "medical" | "security" | "other";
       patrol_status: "in_progress" | "completed" | "abandoned";
       shift_status: "scheduled" | "active" | "completed" | "missed" | "cancelled";
+      site_type: "home" | "office" | "warehouse" | "retail" | "industrial" | "bank" | "other";
       task_priority: "low" | "normal" | "high" | "critical";
       task_status: "open" | "assigned" | "accepted" | "in_progress" | "completed" | "cancelled";
       task_type: "patrol" | "inspection" | "maintenance" | "response" | "other";

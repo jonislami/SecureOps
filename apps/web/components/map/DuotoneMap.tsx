@@ -23,13 +23,23 @@ export interface FieldRing {
   tone: 'accent' | 'alarm' | 'neutral';
 }
 
+export interface BuildingPoint {
+  id: string;
+  lng: number;
+  lat: number;
+}
+
 interface Props {
   markers?: FieldMarker[];
   rings?: FieldRing[];
+  /** Many buildings (2k+): rendered as a native clustered layer, not overlays. */
+  buildings?: BuildingPoint[];
   center?: [number, number];
   zoom?: number;
   selectedId?: string | null;
   onMarkerClick?: (id: string) => void;
+  onBuildingClick?: (id: string) => void;
+  flyTo?: [number, number];
   fitKey?: number; // bump to fit-all
   className?: string;
 }
@@ -40,18 +50,25 @@ function metersPerPixel(lat: number, zoom: number) {
   return (40075016.686 * Math.cos((lat * Math.PI) / 180)) / Math.pow(2, zoom + 9);
 }
 
+const BLD_SRC = 'buildings-src';
+
 export function DuotoneMap({
   markers = [],
   rings = [],
+  buildings = [],
   center = MAP_DEFAULT.center,
   zoom = MAP_DEFAULT.zoom,
   selectedId,
   onMarkerClick,
+  onBuildingClick,
+  flyTo,
   fitKey,
   className,
 }: Props) {
   const mapContainer = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
+  const onBuildingClickRef = useRef(onBuildingClick);
+  onBuildingClickRef.current = onBuildingClick;
   const [tick, setTick] = useState(0); // recompute overlay positions on map move
 
   useEffect(() => {
@@ -63,6 +80,30 @@ export function DuotoneMap({
       zoom,
       attributionControl: { compact: true },
     });
+
+    // Native clustered buildings layer (scales to thousands).
+    const installBuildings = () => {
+      if (!map.isStyleLoaded() || map.getSource(BLD_SRC)) return;
+      map.addSource(BLD_SRC, { type: 'geojson', data: { type: 'FeatureCollection', features: [] }, cluster: true, clusterRadius: 48, clusterMaxZoom: 15 });
+      map.addLayer({ id: 'bld-cluster', type: 'circle', source: BLD_SRC, filter: ['has', 'point_count'], paint: { 'circle-color': '#5980a6', 'circle-opacity': 0.92, 'circle-stroke-color': '#fff', 'circle-stroke-width': 1.5, 'circle-radius': ['step', ['get', 'point_count'], 13, 25, 17, 100, 22] } });
+      map.addLayer({ id: 'bld-cluster-count', type: 'symbol', source: BLD_SRC, filter: ['has', 'point_count'], layout: { 'text-field': ['get', 'point_count_abbreviated'], 'text-size': 11, 'text-font': ['Noto Sans Regular'] }, paint: { 'text-color': '#fff' } });
+      map.addLayer({ id: 'bld-point', type: 'circle', source: BLD_SRC, filter: ['!', ['has', 'point_count']], paint: { 'circle-color': '#5980a6', 'circle-radius': 5, 'circle-stroke-color': '#fff', 'circle-stroke-width': 1.5, 'circle-opacity': 0.95 } });
+      map.on('click', 'bld-cluster', (e) => {
+        const f = e.features?.[0];
+        const cid = f?.properties?.cluster_id;
+        const src = map.getSource(BLD_SRC) as maplibregl.GeoJSONSource;
+        if (cid != null && src.getClusterExpansionZoom) {
+          src.getClusterExpansionZoom(cid).then((z) => map.easeTo({ center: (f!.geometry as GeoJSON.Point).coordinates as [number, number], zoom: z }));
+        }
+      });
+      map.on('click', 'bld-point', (e) => { const id = e.features?.[0]?.properties?.id as string | undefined; if (id) onBuildingClickRef.current?.(id); });
+      map.on('mouseenter', 'bld-point', () => { map.getCanvas().style.cursor = 'pointer'; });
+      map.on('mouseleave', 'bld-point', () => { map.getCanvas().style.cursor = ''; });
+      map.on('mouseenter', 'bld-cluster', () => { map.getCanvas().style.cursor = 'pointer'; });
+      map.on('mouseleave', 'bld-cluster', () => { map.getCanvas().style.cursor = ''; });
+    };
+    map.on('load', installBuildings);
+    map.on('styledata', installBuildings);
     mapRef.current = map;
     const rerender = () => setTick((n) => n + 1);
     map.on('move', rerender);
@@ -96,6 +137,27 @@ export function DuotoneMap({
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fitKey]);
+
+  // Push buildings into the native clustered source when they change.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+    const apply = () => {
+      const src = map.getSource(BLD_SRC) as maplibregl.GeoJSONSource | undefined;
+      if (!src) return false;
+      src.setData({ type: 'FeatureCollection', features: buildings.map((b) => ({ type: 'Feature', properties: { id: b.id }, geometry: { type: 'Point', coordinates: [b.lng, b.lat] } })) });
+      return true;
+    };
+    if (!apply()) { const t = setTimeout(apply, 400); return () => clearTimeout(t); }
+  }, [buildings, tick]);
+
+  // Ease to a point (search / selection).
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !flyTo) return;
+    map.easeTo({ center: flyTo, zoom: Math.max(map.getZoom(), 15), duration: 700 });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [flyTo?.[0], flyTo?.[1]]);
 
   const map = mapRef.current;
   const project = (lng: number, lat: number) => map?.project([lng, lat]) ?? { x: -9999, y: -9999 };

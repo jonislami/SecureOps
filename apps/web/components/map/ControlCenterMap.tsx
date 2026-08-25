@@ -19,6 +19,7 @@ interface Member {
   name: string;
   initials: string;
   role: string; // display role
+  empType: string; // guard | patrol | technician | office
   code: string | null;
   siteId: string | null;
   siteName: string | null;
@@ -87,6 +88,15 @@ export function ControlCenterMap({ user }: { user: { name: string; role: string 
   const [fitKey, setFitKey] = useState(0);
   const debounce = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // Layer filters + building search.
+  const [showGuards, setShowGuards] = useState(true);
+  const [showPatrols, setShowPatrols] = useState(true);
+  const [showBuildings, setShowBuildings] = useState(false);
+  const [bldQuery, setBldQuery] = useState('');
+  const [bldResults, setBldResults] = useState<Array<{ id: string; name: string; lng: number; lat: number; radius: number | null }>>([]);
+  const [pickedBuilding, setPickedBuilding] = useState<{ id: string; name: string; lng: number; lat: number; radius: number | null } | null>(null);
+  const [flyTo, setFlyTo] = useState<[number, number] | undefined>(undefined);
+
   // Live clock.
   useEffect(() => {
     const t = setInterval(() => setClock(new Date().toLocaleTimeString([], { hour12: false })), 1000);
@@ -95,16 +105,22 @@ export function ControlCenterMap({ user }: { user: { name: string; role: string 
   }, []);
 
   const loadSites = useCallback(async () => {
-    const { data } = await supabase.from('sites').select('id, name, lng, lat, geofences(radius_m)').not('lng', 'is', null);
-    setSites(
-      ((data ?? []) as unknown as Array<Record<string, unknown>>).map((r) => ({
-        id: r.id as string,
-        name: r.name as string,
-        lng: r.lng as number,
-        lat: r.lat as number,
-        radius_m: ((r.geofences as Array<{ radius_m?: number }> | null)?.[0]?.radius_m as number) ?? null,
-      }))
-    );
+    // Paginate lightweight site points (PostgREST caps at 1000/req) so the
+    // buildings layer can show thousands. Radius is fetched per selected building.
+    const all: Site[] = [];
+    for (let page = 0; page < 20; page++) {
+      const from = page * 1000;
+      const { data } = await supabase
+        .from('sites')
+        .select('id, name, lng, lat')
+        .not('lng', 'is', null)
+        .order('id')
+        .range(from, from + 999);
+      const rows = (data ?? []) as unknown as Array<Record<string, unknown>>;
+      for (const r of rows) all.push({ id: r.id as string, name: r.name as string, lng: r.lng as number, lat: r.lat as number, radius_m: null });
+      if (rows.length < 1000) break;
+    }
+    setSites(all);
   }, [supabase]);
 
   const loadRoster = useCallback(async () => {
@@ -162,6 +178,7 @@ export function ControlCenterMap({ user }: { user: { name: string; role: string 
         name,
         initials: initialsOf(name),
         role: ROLE_LABEL[prof?.employment_type ?? 'guard'] ?? 'Field',
+        empType: prof?.employment_type ?? 'guard',
         code: prof?.employee_code ?? null,
         siteId: site?.id ?? null,
         siteName: site?.name ?? null,
@@ -194,6 +211,29 @@ export function ControlCenterMap({ user }: { user: { name: string; role: string 
     };
   }, [supabase, loadRoster]);
 
+  // Building search (server-side, by name).
+  useEffect(() => {
+    const q = bldQuery.trim();
+    if (!q) { setBldResults([]); return; }
+    let active = true;
+    const t = setTimeout(async () => {
+      const { data } = await supabase.from('sites').select('id, name, lng, lat, geofences(radius_m)').ilike('name', `%${q}%`).not('lng', 'is', null).limit(8);
+      if (!active) return;
+      setBldResults(((data ?? []) as unknown as Array<Record<string, unknown>>).map((r) => ({
+        id: r.id as string, name: r.name as string, lng: r.lng as number, lat: r.lat as number,
+        radius: ((r.geofences as Array<{ radius_m?: number }> | null)?.[0]?.radius_m as number) ?? null,
+      })));
+    }, 250);
+    return () => { active = false; clearTimeout(t); };
+  }, [bldQuery, supabase]);
+
+  function chooseBuilding(b: { id: string; name: string; lng: number; lat: number; radius: number | null }) {
+    setPickedBuilding(b);
+    setFlyTo([b.lng, b.lat]);
+    setBldQuery('');
+    setBldResults([]);
+  }
+
   // Derived: filtered roster.
   const filtered = members.filter((m) => {
     if (filter === 'ON POST' && m.status !== 'on_post') return false;
@@ -206,27 +246,33 @@ export function ControlCenterMap({ user }: { user: { name: string; role: string 
     return true;
   });
 
-  // Map markers + rings.
-  const markers: FieldMarker[] = filtered.map((m) => ({
-    id: m.id,
-    lng: m.lng,
-    lat: m.lat,
-    initials: m.initials,
-    status: m.status,
-    label: selected === m.id ? `${m.name} · ${STATUS_TEXT[m.status].toLowerCase()}` : undefined,
-  }));
+  // Field markers on the map, gated by the guard/patrol layer toggles.
+  const markers: FieldMarker[] = filtered
+    .filter((m) => (m.empType === 'patrol' ? showPatrols : showGuards))
+    .map((m) => ({
+      id: m.id,
+      lng: m.lng,
+      lat: m.lat,
+      initials: m.initials,
+      status: m.status,
+      label: selected === m.id ? `${m.name} · ${STATUS_TEXT[m.status].toLowerCase()}` : undefined,
+    }));
 
+  // Coverage from on-post members (scales to 2k sites — no per-site iteration).
   const coveredSiteIds = new Set(members.filter((m) => m.status === 'on_post' && m.siteId).map((m) => m.siteId as string));
-  const rings: FieldRing[] = sites.map((s) => ({
-    id: s.id,
-    lng: s.lng,
-    lat: s.lat,
-    radiusM: s.radius_m ?? 100,
-    tone: sos?.siteId === s.id ? 'alarm' : coveredSiteIds.has(s.id) ? 'accent' : 'neutral',
-  }));
   const covered = coveredSiteIds.size;
-  const uncovered = Math.max(0, sites.length - covered);
   const onShift = members.filter((m) => m.status !== 'offline').length;
+
+  // Rings: only manned sites + the searched/selected building (never all 2k).
+  const rings: FieldRing[] = [
+    ...members.filter((m) => m.status === 'on_post' && m.siteId).map((m) => ({
+      id: `on-${m.siteId}`, lng: m.lng, lat: m.lat, radiusM: 100, tone: 'accent' as const,
+    })),
+    ...(pickedBuilding ? [{ id: `sel-${pickedBuilding.id}`, lng: pickedBuilding.lng, lat: pickedBuilding.lat, radiusM: pickedBuilding.radius ?? 100, tone: 'alarm' as const }] : []),
+  ];
+
+  // Buildings layer (clustered) — only when the Buildings filter is on.
+  const buildings = showBuildings ? sites.map((s) => ({ id: s.id, lng: s.lng, lat: s.lat })) : [];
 
   const mapCenter = members[0] ? ([members[0].lng, members[0].lat] as [number, number]) : MAP_DEFAULT.center;
 
@@ -369,24 +415,50 @@ export function ControlCenterMap({ user }: { user: { name: string; role: string 
           <DuotoneMap
             markers={markers}
             rings={rings}
+            buildings={buildings}
             center={mapCenter}
             selectedId={selected}
             onMarkerClick={(id) => setSelected(id)}
+            onBuildingClick={async (id) => {
+              const { data } = await supabase.from('sites').select('id, name, lng, lat, geofences(radius_m)').eq('id', id).maybeSingle();
+              const r = data as unknown as Record<string, unknown> | null;
+              if (r) chooseBuilding({ id: r.id as string, name: r.name as string, lng: r.lng as number, lat: r.lat as number, radius: ((r.geofences as Array<{ radius_m?: number }> | null)?.[0]?.radius_m as number) ?? null });
+            }}
+            flyTo={flyTo}
             fitKey={fitKey}
             className="cc-map-fill"
           />
 
+          {/* Search + layer filters (top-left) */}
+          <div style={{ position: 'absolute', left: 18, top: 18, width: 300, display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <div style={{ position: 'relative' }}>
+              <input className="input" placeholder="Search a building by name…" value={bldQuery} onChange={(e) => setBldQuery(e.target.value)} style={{ height: 34, fontSize: 13, background: 'color-mix(in srgb,var(--color-bg) 94%,transparent)' }} />
+              {bldResults.length > 0 && (
+                <div style={{ position: 'absolute', top: 38, left: 0, right: 0, background: 'var(--color-bg)', border: '1px solid var(--color-divider)', boxShadow: 'var(--shadow-md)', zIndex: 5, maxHeight: 260, overflowY: 'auto' }}>
+                  {bldResults.map((b) => (
+                    <button key={b.id} className="row" onClick={() => chooseBuilding(b)} style={{ display: 'block', width: '100%', textAlign: 'left', padding: '8px 10px', font: '13px/1.3 var(--font-body)', borderBottom: '1px solid var(--color-divider)', background: 'transparent' }}>{b.name}</button>
+                  ))}
+                </div>
+              )}
+            </div>
+            <div style={{ display: 'flex', gap: 6 }}>
+              {([['Buildings', showBuildings, setShowBuildings], ['Guards', showGuards, setShowGuards], ['Patrols', showPatrols, setShowPatrols]] as const).map(([label, on, set]) => (
+                <button key={label} className={`seg-opt${on ? ' active' : ''}`} style={{ border: '1px solid var(--color-divider)', fontSize: 10.5, letterSpacing: '.05em', background: on ? 'var(--color-accent)' : 'color-mix(in srgb,var(--color-bg) 92%,transparent)' }} onClick={() => set((v: boolean) => !v)}>{label}</button>
+              ))}
+            </div>
+          </div>
+
           {/* Coverage blueprint card */}
           <div className="blueprint" style={{ position: 'absolute', right: 18, top: 18, width: 212, padding: 12, background: 'color-mix(in srgb,var(--color-bg) 92%,transparent)', boxShadow: 'var(--shadow-md)' }}>
             <i className="corner tl" /><i className="corner tr" /><i className="corner bl" /><i className="corner br" />
-            <div style={{ font: '600 10px/1 var(--font-heading)', letterSpacing: '.14em', textTransform: 'uppercase', color: 'color-mix(in srgb,var(--color-text) 55%,transparent)', marginBottom: 8 }}>Site coverage</div>
+            <div style={{ font: '600 10px/1 var(--font-heading)', letterSpacing: '.14em', textTransform: 'uppercase', color: 'color-mix(in srgb,var(--color-text) 55%,transparent)', marginBottom: 8 }}>Coverage</div>
             <div style={{ display: 'flex', alignItems: 'flex-end', gap: 14, marginBottom: 8 }}>
-              <div><div style={{ font: '600 30px/1 var(--font-heading)', color: 'var(--color-accent)' }}>{covered}</div><div style={{ font: '10px/1.2 var(--font-body)', letterSpacing: '.08em', textTransform: 'uppercase' }}>covered</div></div>
-              <div><div style={{ font: '600 30px/1 var(--font-heading)', color: 'var(--color-alarm)' }}>{uncovered}</div><div style={{ font: '10px/1.2 var(--font-body)', letterSpacing: '.08em', textTransform: 'uppercase' }}>uncovered</div></div>
+              <div><div style={{ font: '600 30px/1 var(--font-heading)', color: 'var(--color-accent)' }}>{covered}</div><div style={{ font: '10px/1.2 var(--font-body)', letterSpacing: '.08em', textTransform: 'uppercase' }}>manned</div></div>
+              <div><div style={{ font: '600 30px/1 var(--font-heading)' }}>{onShift}</div><div style={{ font: '10px/1.2 var(--font-body)', letterSpacing: '.08em', textTransform: 'uppercase' }}>on shift</div></div>
             </div>
             <div style={{ height: 1, background: 'var(--color-divider)', margin: '8px 0' }} />
             <div style={{ font: '11px/1.6 var(--font-body)', color: 'color-mix(in srgb,var(--color-text) 65%,transparent)' }}>
-              {onShift} field members on shift{sos ? <><br />1 SOS active</> : null}
+              {sites.length} buildings{sos ? <><br />1 SOS active</> : null}
             </div>
           </div>
 
