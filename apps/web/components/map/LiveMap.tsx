@@ -29,6 +29,10 @@ interface LiveMapProps {
   circles?: MapCircle[];
   /** Fires when the user clicks the map (e.g. to place a site). */
   onClick?: (lng: number, lat: number) => void;
+  /** Fires when a marker is clicked, with its id. */
+  onMarkerClick?: (id: string) => void;
+  /** Fires when a geofence circle is clicked, with its id. */
+  onCircleClick?: (id: string) => void;
   className?: string;
 }
 

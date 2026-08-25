@@ -10,7 +10,13 @@ export default async function AdminPage() {
   if (!user) redirect('/login');
   if (!user.roles.includes('super_admin')) redirect('/dashboard');
 
-  const workers = await listWorkers();
+  let workers = [] as Awaited<ReturnType<typeof listWorkers>>;
+  let loadError: string | null = null;
+  try {
+    workers = await listWorkers();
+  } catch (e) {
+    loadError = e instanceof Error ? e.message : 'Failed to load workers';
+  }
 
   return (
     <div className="min-h-screen">
@@ -29,7 +35,23 @@ export default async function AdminPage() {
         </div>
       </header>
       <main className="container py-6">
-        <WorkersManager workers={workers} currentUserId={user.id} />
+        {loadError ? (
+          <div className="rounded-md border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-200">
+            <p className="font-medium">Admin panel isn&apos;t configured yet.</p>
+            <p className="mt-1">{loadError}</p>
+            <p className="mt-2">
+              <strong>Local:</strong> ensure <code>SUPABASE_SERVICE_ROLE_KEY</code> is in{' '}
+              <code>apps/web/.env.local</code>, then <strong>restart the dev server</strong> (stop it and
+              run <code>pnpm --filter @sentinel/web dev</code> again — Next.js only reads env at startup).
+            </p>
+            <p className="mt-1">
+              <strong>Vercel:</strong> add <code>SUPABASE_SERVICE_ROLE_KEY</code> as a non-public
+              Environment Variable and redeploy.
+            </p>
+          </div>
+        ) : (
+          <WorkersManager workers={workers} currentUserId={user.id} />
+        )}
       </main>
     </div>
   );
