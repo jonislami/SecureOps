@@ -23,6 +23,8 @@ interface ShiftRow {
   starts_at: string;
   ends_at: string;
   status: string;
+  checkedInAt: string | null;
+  checkedOutAt: string | null;
 }
 
 const STATUS_COLORS: Record<string, string> = {
@@ -62,7 +64,9 @@ export function ShiftsManager({ currentUserId }: { currentUserId: string }) {
       supabase.from('sites').select('id, name').order('name'),
       supabase
         .from('shifts')
-        .select('id, starts_at, ends_at, status, profiles(full_name), sites(name)')
+        .select(
+          'id, starts_at, ends_at, status, profiles(full_name), sites(name), attendance(check_in_at, check_out_at)'
+        )
         .order('starts_at', { ascending: false })
         .limit(50),
     ]);
@@ -76,6 +80,12 @@ export function ShiftsManager({ currentUserId }: { currentUserId: string }) {
         starts_at: row.starts_at as string,
         ends_at: row.ends_at as string,
         status: row.status as string,
+        checkedInAt:
+          ((row.attendance as Array<{ check_in_at?: string }> | null)?.[0]?.check_in_at as string) ??
+          null,
+        checkedOutAt:
+          ((row.attendance as Array<{ check_out_at?: string }> | null)?.[0]?.check_out_at as string) ??
+          null,
       }))
     );
     setLoading(false);
@@ -190,6 +200,12 @@ export function ShiftsManager({ currentUserId }: { currentUserId: string }) {
                     <div className="text-sm text-muted-foreground">
                       {fmt(s.starts_at)} → {fmt(s.ends_at)}
                     </div>
+                    {s.checkedInAt && (
+                      <div className="text-xs text-emerald-600">
+                        ✓ Checked in {fmt(s.checkedInAt)}
+                        {s.checkedOutAt ? ` · out ${fmt(s.checkedOutAt)}` : ''}
+                      </div>
+                    )}
                   </div>
                   <span
                     className={`rounded-full px-2 py-0.5 text-xs font-medium ${

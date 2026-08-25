@@ -5,6 +5,7 @@ import { useAuth } from '../lib/auth';
 import { supabase } from '../lib/supabase';
 import { LocationCard } from '../components/LocationCard';
 import { ShiftCard, type Shift } from '../components/ShiftCard';
+import { AttendanceCard } from '../components/AttendanceCard';
 import { colors } from '../theme';
 
 /** Feature availability per phase — the field capabilities come later. */
@@ -94,6 +95,7 @@ export function HomeScreen() {
           <>
             <Text style={styles.sectionTitle}>Shift</Text>
             <ShiftCard shift={shift} onChanged={loadShift} />
+            {activeShiftId && <AttendanceCard shiftId={activeShiftId} />}
             <LocationCard shiftId={activeShiftId} />
           </>
         )}

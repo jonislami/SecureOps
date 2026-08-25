@@ -44,3 +44,11 @@ export {
   type IngestPing,
   type IngestResult,
 } from './location/ingest';
+
+// Attendance check-in / check-out helpers
+export {
+  checkIn,
+  checkOut,
+  type CheckInResult,
+  type CheckOutResult,
+} from './location/attendance';

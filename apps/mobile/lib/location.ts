@@ -18,6 +18,14 @@ export async function requestForegroundPermission(): Promise<boolean> {
   return status === 'granted';
 }
 
+/** One-shot current position (for check-in/out). Returns null if denied. */
+export async function getCurrentCoords(): Promise<{ lng: number; lat: number } | null> {
+  const granted = await requestForegroundPermission();
+  if (!granted) return null;
+  const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High });
+  return { lng: loc.coords.longitude, lat: loc.coords.latitude };
+}
+
 /**
  * Start sharing the device's foreground location: every ~10 s (or 10 m of
  * movement) send a real GPS ping through the server-authoritative ingest RPC.
