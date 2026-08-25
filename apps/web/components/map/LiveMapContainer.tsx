@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { LiveMap, type MapMarker, type MapCircle } from './LiveMap';
+import { GuardDetailsPanel, SiteDetailsPanel } from './MapDetailPanel';
 
 interface SiteRow {
   id: string;
@@ -30,6 +31,7 @@ export function LiveMapContainer() {
   const supabase = useMemo(() => createClient(), []);
   const [positions, setPositions] = useState<Record<string, LivePos>>({});
   const [sites, setSites] = useState<SiteRow[]>([]);
+  const [selected, setSelected] = useState<{ type: 'guard' | 'site'; id: string } | null>(null);
   const namesRef = useRef<Record<string, string>>({});
 
   // Load sites (with geofence radius) once — shown as reference points + rings.
@@ -149,8 +151,16 @@ export function LiveMapContainer() {
 
   return (
     <>
-      <LiveMap markers={personMarkers} circles={circles} className="absolute inset-0 h-full w-full" />
-      <div className="pointer-events-none absolute left-3 top-3 space-y-0.5 rounded-md border bg-card/90 px-3 py-2 text-sm shadow">
+      <LiveMap
+        markers={personMarkers}
+        circles={circles}
+        onMarkerClick={(id) => setSelected({ type: 'guard', id })}
+        onCircleClick={(id) => setSelected({ type: 'site', id })}
+        className="absolute inset-0 h-full w-full"
+      />
+
+      {/* Coverage counter (top-right, out of the way of the detail panel). */}
+      <div className="pointer-events-none absolute right-3 top-3 space-y-0.5 rounded-md border bg-card/90 px-3 py-2 text-sm shadow">
         <div>
           <span className="font-medium text-emerald-600">{covered}</span> covered ·{' '}
           <span className="font-medium text-red-600">{uncovered}</span> uncovered
@@ -159,6 +169,14 @@ export function LiveMapContainer() {
           {personMarkers.length} guard{personMarkers.length === 1 ? '' : 's'} on shift
         </div>
       </div>
+
+      {/* Click-a-guard / click-a-site details (top-left). */}
+      {selected?.type === 'guard' && (
+        <GuardDetailsPanel employeeId={selected.id} onClose={() => setSelected(null)} />
+      )}
+      {selected?.type === 'site' && (
+        <SiteDetailsPanel siteId={selected.id} onClose={() => setSelected(null)} />
+      )}
     </>
   );
 }

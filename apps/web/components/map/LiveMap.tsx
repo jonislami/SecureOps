@@ -51,7 +51,7 @@ function circleFeature(c: MapCircle): GeoJSON.Feature {
   }
   return {
     type: 'Feature',
-    properties: { color: c.color ?? '#3B82F6' },
+    properties: { id: c.id, color: c.color ?? '#3B82F6' },
     geometry: { type: 'Polygon', coordinates: [coords] },
   };
 }
@@ -67,14 +67,20 @@ export function LiveMap({
   markers = [],
   circles = [],
   onClick,
+  onMarkerClick,
+  onCircleClick,
   className,
 }: LiveMapProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
   const markerObjs = useRef<maplibregl.Marker[]>([]);
   const onClickRef = useRef(onClick);
+  const onMarkerClickRef = useRef(onMarkerClick);
+  const onCircleClickRef = useRef(onCircleClick);
   const styleReady = useRef(false);
   onClickRef.current = onClick;
+  onMarkerClickRef.current = onMarkerClick;
+  onCircleClickRef.current = onCircleClick;
 
   // Init once.
   useEffect(() => {
@@ -91,7 +97,11 @@ export function LiveMap({
     map.addControl(new maplibregl.ScaleControl({ unit: 'metric' }), 'bottom-left');
     map.on('click', (e) => onClickRef.current?.(e.lngLat.lng, e.lngLat.lat));
 
-    map.on('load', () => {
+    // Install the geofence source, layers, and click handlers as soon as the
+    // style is ready. Idempotent + triggered from multiple events so it works
+    // whether or not the one-shot 'load' event fires (e.g. headless/slow render).
+    const installGeofence = () => {
+      if (!map.isStyleLoaded() || map.getSource(GEOFENCE_SRC)) return;
       map.addSource(GEOFENCE_SRC, {
         type: 'geojson',
         data: { type: 'FeatureCollection', features: [] },
@@ -108,9 +118,21 @@ export function LiveMap({
         source: GEOFENCE_SRC,
         paint: { 'line-color': ['get', 'color'], 'line-width': 2, 'line-opacity': 0.7 },
       });
+      map.on('click', 'geofence-fill', (e) => {
+        const id = e.features?.[0]?.properties?.id as string | undefined;
+        if (id) onCircleClickRef.current?.(id);
+      });
+      map.on('mouseenter', 'geofence-fill', () => {
+        if (onCircleClickRef.current) map.getCanvas().style.cursor = 'pointer';
+      });
+      map.on('mouseleave', 'geofence-fill', () => {
+        map.getCanvas().style.cursor = '';
+      });
       styleReady.current = true;
       syncCircles();
-    });
+    };
+    map.on('load', installGeofence);
+    map.on('styledata', installGeofence);
 
     mapRef.current = map;
     return () => {
@@ -129,7 +151,15 @@ export function LiveMap({
     markerObjs.current = [];
     for (const mk of markers) {
       const el = document.createElement('div');
-      el.style.cssText = 'display:flex;align-items:center;gap:5px;cursor:default;';
+      el.style.cssText = `display:flex;align-items:center;gap:5px;cursor:${
+        onMarkerClickRef.current ? 'pointer' : 'default'
+      };`;
+      if (onMarkerClickRef.current) {
+        el.addEventListener('click', (ev) => {
+          ev.stopPropagation();
+          onMarkerClickRef.current?.(mk.id);
+        });
+      }
 
       const dot = document.createElement('div');
       dot.style.cssText = `width:14px;height:14px;border-radius:50%;background:${
