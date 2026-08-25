@@ -6,6 +6,7 @@ import { supabase } from '../lib/supabase';
 import { LocationCard } from '../components/LocationCard';
 import { ShiftCard, type Shift } from '../components/ShiftCard';
 import { AttendanceCard } from '../components/AttendanceCard';
+import { PatrolCard } from '../components/PatrolCard';
 import { colors } from '../theme';
 
 /** Feature availability per phase — the field capabilities come later. */
@@ -23,6 +24,7 @@ export function HomeScreen() {
   const name = profile?.full_name ?? session?.user.email ?? 'Field Officer';
   const hasRoles = roles.length > 0;
   const canShare = roles.some(isFieldRole);
+  const canPatrol = roles.includes('patrol');
 
   const [shift, setShift] = useState<Shift | null>(null);
   const uid = session?.user.id;
@@ -97,6 +99,13 @@ export function HomeScreen() {
             <ShiftCard shift={shift} onChanged={loadShift} />
             {activeShiftId && <AttendanceCard shiftId={activeShiftId} />}
             <LocationCard shiftId={activeShiftId} />
+          </>
+        )}
+
+        {canPatrol && uid && (
+          <>
+            <Text style={styles.sectionTitle}>Patrol</Text>
+            <PatrolCard userId={uid} shiftId={activeShiftId} />
           </>
         )}
 

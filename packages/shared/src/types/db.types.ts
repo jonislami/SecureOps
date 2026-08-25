@@ -144,6 +144,8 @@ export type Database = {
           tag_id: string | null;
           created_at: string;
           updated_at: string;
+          lng: number | null;
+          lat: number | null;
         };
         Insert: {
           id?: string;
@@ -156,6 +158,8 @@ export type Database = {
           tag_id?: string | null;
           created_at?: string;
           updated_at?: string;
+          lng?: number | null;
+          lat?: number | null;
         };
         Update: {
           id?: string;
@@ -168,6 +172,8 @@ export type Database = {
           tag_id?: string | null;
           created_at?: string;
           updated_at?: string;
+          lng?: number | null;
+          lat?: number | null;
         };
       };
       clients: {
