@@ -7,6 +7,7 @@ import { LocationCard } from '../components/LocationCard';
 import { ShiftCard, type Shift } from '../components/ShiftCard';
 import { AttendanceCard } from '../components/AttendanceCard';
 import { PatrolCard } from '../components/PatrolCard';
+import { TasksCard } from '../components/TasksCard';
 import { colors } from '../theme';
 
 /** Feature availability per phase — the field capabilities come later. */
@@ -25,6 +26,7 @@ export function HomeScreen() {
   const hasRoles = roles.length > 0;
   const canShare = roles.some(isFieldRole);
   const canPatrol = roles.includes('patrol');
+  const isTechnician = roles.includes('technician');
 
   const [shift, setShift] = useState<Shift | null>(null);
   const uid = session?.user.id;
@@ -106,6 +108,13 @@ export function HomeScreen() {
           <>
             <Text style={styles.sectionTitle}>Patrol</Text>
             <PatrolCard userId={uid} shiftId={activeShiftId} />
+          </>
+        )}
+
+        {isTechnician && uid && (
+          <>
+            <Text style={styles.sectionTitle}>Tasks</Text>
+            <TasksCard userId={uid} />
           </>
         )}
 

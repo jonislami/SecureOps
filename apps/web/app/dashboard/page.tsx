@@ -110,7 +110,8 @@ export default async function DashboardPage() {
             icon={ClipboardList}
             title="Tasks & Dispatch"
             desc="Assign and track work"
-            phase="Phase 7"
+            phase="Dispatch"
+            href="/tasks"
           />
           <FeatureTile
             icon={AlertTriangle}
