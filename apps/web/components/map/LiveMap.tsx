@@ -33,6 +33,8 @@ interface LiveMapProps {
   onMarkerClick?: (id: string) => void;
   /** Fires when a geofence circle is clicked, with its id. */
   onCircleClick?: (id: string) => void;
+  /** Ease the map to this point when it changes (e.g. after pasting coords). */
+  flyTo?: [number, number];
   className?: string;
 }
 
@@ -69,6 +71,7 @@ export function LiveMap({
   onClick,
   onMarkerClick,
   onCircleClick,
+  flyTo,
   className,
 }: LiveMapProps) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -184,6 +187,14 @@ export function LiveMap({
       markerObjs.current.push(marker);
     }
   }, [markers]);
+
+  // Ease to a new point (e.g. after pasting coordinates).
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !flyTo) return;
+    map.easeTo({ center: flyTo, zoom: Math.max(map.getZoom(), 15), duration: 700 });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [flyTo?.[0], flyTo?.[1]]);
 
   // Sync geofence circles.
   function syncCircles() {

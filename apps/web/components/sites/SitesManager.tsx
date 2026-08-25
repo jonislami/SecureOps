@@ -4,6 +4,8 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { MapPin, Plus } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { MAP_DEFAULT } from '@/lib/env';
+import { parseCoordsFromText, isShortMapLink, looksLikeUrl } from '@/lib/parse-location';
+import { resolveMapLink } from '@/app/sites/actions';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -40,6 +42,39 @@ export function SitesManager() {
   const [picked, setPicked] = useState<{ lng: number; lat: number } | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Smart location input: paste coordinates OR a Google Maps link.
+  const [locInput, setLocInput] = useState('');
+  const [locating, setLocating] = useState(false);
+  const [locMsg, setLocMsg] = useState<string | null>(null);
+
+  async function locate() {
+    setLocMsg(null);
+    setError(null);
+    const text = locInput.trim();
+    if (!text) return;
+    // 1. Try to parse coordinates / a full URL right here.
+    const direct = parseCoordsFromText(text);
+    if (direct) {
+      setPicked({ lng: direct.lng, lat: direct.lat });
+      setLocMsg(`Pinned: ${direct.lat.toFixed(5)}, ${direct.lng.toFixed(5)}`);
+      return;
+    }
+    // 2. Short link → resolve server-side.
+    if (looksLikeUrl(text) && isShortMapLink(text)) {
+      setLocating(true);
+      const res = await resolveMapLink(text);
+      setLocating(false);
+      if (res.ok) {
+        setPicked({ lng: res.coords.lng, lat: res.coords.lat });
+        setLocMsg(`Pinned from link: ${res.coords.lat.toFixed(5)}, ${res.coords.lng.toFixed(5)}`);
+      } else {
+        setLocMsg(res.error);
+      }
+      return;
+    }
+    setLocMsg('Could not read a location from that. Paste coordinates like "42.37, 21.15" or a Google Maps link.');
+  }
 
   // Add-client inline.
   const [newClient, setNewClient] = useState('');
@@ -100,6 +135,7 @@ export function SitesManager() {
       p_lng: picked.lng,
       p_lat: picked.lat,
       p_radius_m: radius,
+      p_source_url: locInput.trim() || null,
     });
     setSaving(false);
     if (e) return setError(e.message);
@@ -108,6 +144,8 @@ export function SitesManager() {
     setCode('');
     setAddress('');
     setPicked(null);
+    setLocInput('');
+    setLocMsg(null);
     await load();
   }
 
@@ -176,9 +214,34 @@ export function SitesManager() {
           </div>
 
           <div className="space-y-2">
-            <Label>Location — click the map to place the site</Label>
+            <Label>Paste Google Maps coordinates or link</Label>
+            <div className="flex gap-2">
+              <Input
+                value={locInput}
+                onChange={(e) => setLocInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    locate();
+                  }
+                }}
+                placeholder='e.g. 42.3706, 21.1553  ·  42°22&apos;14"N 21°09&apos;19"E  ·  maps.app.goo.gl/…'
+              />
+              <Button type="button" variant="outline" onClick={locate} disabled={locating}>
+                {locating ? 'Locating…' : 'Locate'}
+              </Button>
+            </div>
+            {locMsg && <p className="text-xs text-muted-foreground">{locMsg}</p>}
+            <p className="text-xs text-muted-foreground">
+              Tip: in Google Maps, long-press the building → it copies the coordinates. Paste them here.
+            </p>
+          </div>
+
+          <div className="space-y-2">
+            <Label>…or click the map to place the site</Label>
             <LiveMap
               center={picked ? [picked.lng, picked.lat] : MAP_DEFAULT.center}
+              flyTo={picked ? [picked.lng, picked.lat] : undefined}
               onClick={(lng, lat) => setPicked({ lng, lat })}
               markers={picked ? [{ id: 'picked', lng: picked.lng, lat: picked.lat, color: '#22C55E' }] : []}
               circles={
