@@ -22,13 +22,20 @@ No `vercel.json` is required with this setup.
 
 ## Environment variables (Vercel → Project → Settings → Environment Variables)
 
-Only **public** vars are needed — the web app talks to Supabase with the anon key
-and relies on Row-Level Security. **No `service_role` key goes to Vercel.**
+Public vars power the app for normal users (anon key + RLS). The **admin panel**
+(create accounts / manage roles) additionally needs the **service_role key as a
+SERVER-ONLY var** — no `NEXT_PUBLIC_` prefix, so it's never sent to the browser.
 
 ```
 NEXT_PUBLIC_SUPABASE_URL      = https://ntuckzexanmrhboyesvh.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY = <your anon key>
+SUPABASE_SERVICE_ROLE_KEY     = <your service_role key>   # server-only, admin panel
 ```
+
+> The `SUPABASE_SERVICE_ROLE_KEY` must be added as a **plain** (non-public) Vercel
+> Environment Variable. Admin server actions verify the caller is a super_admin
+> before using it. If you omit it, the app still runs — only the `/admin` panel's
+> account actions are disabled.
 
 Optional (map tuning — safe to omit, sensible defaults apply):
 

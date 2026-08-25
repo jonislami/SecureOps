@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
-import { ShieldCheck, MapPin, Users, ClipboardList, AlertTriangle, Building2, Route } from 'lucide-react';
+import { ShieldCheck, MapPin, Users, ClipboardList, AlertTriangle, Building2, Route, UserCog } from 'lucide-react';
 import { ROLE_LABELS, primarySurface } from '@sentinel/shared';
 import { getCurrentUser } from '@/lib/auth';
 import { cn } from '@/lib/utils';
@@ -78,6 +78,15 @@ export default async function DashboardPage() {
         </Card>
 
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {user.roles.includes('super_admin') && (
+            <FeatureTile
+              icon={UserCog}
+              title="Workers & Roles"
+              desc="Accounts & permissions"
+              phase="Admin"
+              href="/admin"
+            />
+          )}
           <FeatureTile
             icon={MapPin}
             title="Live Map"
