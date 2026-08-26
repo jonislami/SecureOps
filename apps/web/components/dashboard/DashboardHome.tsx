@@ -248,7 +248,7 @@ export function DashboardHome({ user }: { user: { name: string; email: string; r
                 <ModuleCard href="/shifts" title="Shifts" desc="Assign guards to posts" action="Manage shifts →" />
                 <ModuleCard href="/patrols" title="Patrol Routes" desc="Routes & checkpoints" action="Manage routes →" />
                 <ModuleCard href="/tasks" title="Tasks & Dispatch" desc={`${taskCounts.open} open · ${taskCounts.unassigned} unassigned`} action="Dispatch →" />
-                <ModuleCard href="/map" title="Emergencies" desc={incidents.length ? `${incidents.length} awaiting ack` : 'No active alarms'} action="Respond →" alarm />
+                <ModuleCard href="/respond" title="Emergencies" desc={incidents.length ? `${incidents.length} awaiting ack` : 'Alarm response'} action="Respond →" alarm />
                 {user.isAdmin && <ModuleCard href="/admin" title="Workers & Roles" desc="Accounts & permissions" action="Admin →" />}
                 <ModuleCard title="Reports" desc="Shift & compliance export" action="Phase 9" disabled />
               </div>
