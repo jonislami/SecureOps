@@ -77,7 +77,8 @@ export function DashboardHome({ user }: { user: { name: string; email: string; r
       raisedBy: i.raised_by as string,
     }));
     setIncidents(incList);
-    const sosSet = new Set(incList.map((i) => i.raisedBy));
+    // Only sos/panic mark a field member; 'alarm' incidents are operator-raised.
+    const sosSet = new Set(incList.filter((i) => i.type === 'sos' || i.type === 'panic').map((i) => i.raisedBy));
 
     const mem: Member[] = ((locR.data ?? []) as unknown as Array<Record<string, unknown>>).map((r) => {
       const prof = r.profiles as { full_name?: string; employment_type?: string } | null;
@@ -269,11 +270,22 @@ export function DashboardHome({ user }: { user: { name: string; email: string; r
               ) : incidents.slice(0, 4).map((i) => (
                 <div key={i.id} style={{ padding: '14px 15px', borderBottom: '1px solid var(--color-divider)', display: 'flex', flexDirection: 'column', gap: 9 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                    <div style={{ width: 32, height: 32, flex: 'none', display: 'grid', placeItems: 'center', background: 'var(--color-alarm)', color: '#f2f2f3', font: '600 12px/1 var(--font-heading)' }}>{initialsOf(i.name)}</div>
-                    <div style={{ flex: 1 }}>
-                      <div style={{ font: '600 15px/1.15 var(--font-heading)' }}>{i.type.toUpperCase()} · {i.name}</div>
-                      <div style={{ font: '11px/1.35 var(--font-body)', color: muted(60) }}>{i.site ?? 'Unknown site'} · raised {i.ago} ago</div>
-                    </div>
+                    {(() => {
+                      // SOS/panic is a person's emergency (show the person); other
+                      // incidents (e.g. alarm) are about a building (show the site).
+                      const isPerson = i.type === 'sos' || i.type === 'panic';
+                      const primary = isPerson ? i.name : (i.site ?? i.name);
+                      const secondary = isPerson ? (i.site ?? 'Unknown site') : i.name;
+                      return (
+                        <>
+                          <div style={{ width: 32, height: 32, flex: 'none', display: 'grid', placeItems: 'center', background: 'var(--color-alarm)', color: '#f2f2f3', font: '600 12px/1 var(--font-heading)' }}>{initialsOf(primary)}</div>
+                          <div style={{ flex: 1 }}>
+                            <div style={{ font: '600 15px/1.15 var(--font-heading)' }}>{i.type.toUpperCase()} · {primary}</div>
+                            <div style={{ font: '11px/1.35 var(--font-body)', color: muted(60) }}>{secondary} · raised {i.ago} ago</div>
+                          </div>
+                        </>
+                      );
+                    })()}
                   </div>
                   <div style={{ display: 'flex', gap: 6 }}>
                     <Link href="/map" className="btn btn-primary" style={{ flex: 1, height: 30, fontSize: 10, letterSpacing: '.09em', background: 'var(--color-alarm)', borderColor: 'var(--color-alarm)', textDecoration: 'none' }}>ACKNOWLEDGE</Link>

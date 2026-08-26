@@ -133,15 +133,18 @@ export function ControlCenterMap({ user }: { user: { name: string; role: string 
         .not('lng', 'is', null),
       supabase
         .from('incidents')
-        .select('raised_by, created_at, profiles(full_name), sites(id, name)')
+        .select('type, raised_by, created_at, profiles(full_name), sites(id, name)')
         .in('status', ['open', 'acknowledged', 'in_progress'])
         .order('created_at', { ascending: false }),
     ]);
 
     const incidents = (inc ?? []) as unknown as Array<Record<string, unknown>>;
-    const sosSet = new Set(incidents.map((i) => i.raised_by as string));
-    if (incidents[0]) {
-      const i0 = incidents[0];
+    // Only sos/panic are a field member's own emergency — 'alarm' incidents are
+    // building alarms raised by the operator and must not mark them as SOS.
+    const fieldSos = incidents.filter((i) => i.type === 'sos' || i.type === 'panic');
+    const sosSet = new Set(fieldSos.map((i) => i.raised_by as string));
+    if (fieldSos[0]) {
+      const i0 = fieldSos[0];
       const ago = Math.round((Date.now() - new Date(i0.created_at as string).getTime()) / 1000);
       setSos({
         name: ((i0.profiles as { full_name?: string } | null)?.full_name) ?? 'Field member',
