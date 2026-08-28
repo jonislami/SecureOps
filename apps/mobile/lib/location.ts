@@ -1,6 +1,10 @@
 import * as Location from 'expo-location';
+import Constants from 'expo-constants';
 import { ingestLocations, type IngestPing } from '@sentinel/shared';
 import { supabase } from './supabase';
+import { startBackgroundTracking, stopBackgroundTracking } from './background-location';
+
+const isExpoGo = Constants.appOwnership === 'expo';
 
 export interface ShareUpdate {
   lng: number;
@@ -39,6 +43,15 @@ export async function startSharing(
   if (!granted) return { ok: false, reason: 'Location permission denied' };
   if (subscription) return { ok: true };
 
+  // On a dev/standalone build, prefer OS background tracking (keeps sending when
+  // the app is backgrounded or the phone is locked). It also delivers while the
+  // app is open, so we skip the foreground watch to avoid duplicate pings.
+  if (!isExpoGo) {
+    const bg = await startBackgroundTracking(shiftId ?? null);
+    if (bg.ok) return { ok: true };
+    // else fall through to foreground-only
+  }
+
   subscription = await Location.watchPositionAsync(
     {
       accuracy: Location.Accuracy.High,
@@ -72,6 +85,7 @@ export async function startSharing(
 export function stopSharing(): void {
   subscription?.remove();
   subscription = null;
+  stopBackgroundTracking().catch(() => {});
 }
 
 export function isSharing(): boolean {

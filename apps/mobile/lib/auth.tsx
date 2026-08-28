@@ -10,6 +10,7 @@ import { AppState } from 'react-native';
 import type { Session } from '@supabase/supabase-js';
 import type { AppRole, Tables } from '@sentinel/shared';
 import { supabase } from './supabase';
+import { registerForPush } from './push';
 
 interface AuthState {
   session: Session | null;
@@ -46,15 +47,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     supabase.auth.getSession().then(async ({ data }) => {
       setSession(data.session);
-      if (data.session) await loadProfileAndRoles(data.session.user.id);
+      if (data.session) {
+        await loadProfileAndRoles(data.session.user.id);
+        registerForPush(data.session.user.id);
+      }
       setLoading(false);
     });
 
     const { data: sub } = supabase.auth.onAuthStateChange(async (_event, next) => {
       setLoading(true);
       setSession(next);
-      if (next) await loadProfileAndRoles(next.user.id);
-      else {
+      if (next) {
+        await loadProfileAndRoles(next.user.id);
+        registerForPush(next.user.id);
+      } else {
         setProfile(null);
         setRoles([]);
       }

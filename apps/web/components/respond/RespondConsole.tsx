@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
 import { signOut } from '@/app/auth/actions';
+import { sendResponsePush } from '@/app/respond/push-actions';
 import { DuotoneMap, type FieldMarker, type FieldRing } from '@/components/map/DuotoneMap';
 
 interface Building { id: string; name: string; type: string; address: string | null; lng: number; lat: number; radius: number | null }
@@ -86,7 +87,10 @@ export function RespondConsole({ email }: { email: string }) {
     const { data, error: e } = await (supabase.rpc as any)('dispatch_response', { p_site: building.id, p_patrol: p.id, p_note: `Alarm at ${building.name}.` });
     setDispatching(null);
     if (e) return setError(e.message);
-    if (data) setMsg(`Dispatched ${p.name} (${fmtDist(p.distanceM)}) to ${building.name}. Task sent to their phone; alarm logged.`);
+    if (data) {
+      sendResponsePush(p.id, building.name); // best-effort push (dev build)
+      setMsg(`Dispatched ${p.name} (${fmtDist(p.distanceM)}) to ${building.name}. Task sent to their phone; alarm logged.`);
+    }
   }
 
   const markers: FieldMarker[] = patrols.map((p, i) => ({ id: p.id, lng: p.lng, lat: p.lat, initials: p.initials, status: 'moving', label: i === 0 ? `${p.name} · nearest` : undefined }));

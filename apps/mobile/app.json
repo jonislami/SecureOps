@@ -10,7 +10,10 @@
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.sentinel.field"
+      "bundleIdentifier": "com.sentinel.field",
+      "infoPlist": {
+        "UIBackgroundModes": ["location", "fetch", "remote-notification"]
+      }
     },
     "android": {
       "package": "com.sentinel.field",
@@ -20,7 +23,8 @@
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "permissions": ["POST_NOTIFICATIONS"]
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -29,9 +33,14 @@
       [
         "expo-location",
         {
-          "locationWhenInUsePermission": "Sentinel uses your location to show your position to the control center while you are on shift."
+          "locationWhenInUsePermission": "Sentinel uses your location to show your position to the control center while you are on shift.",
+          "locationAlwaysAndWhenInUsePermission": "Sentinel tracks your location while you are on shift — including in the background — so the control center can see you and respond to emergencies.",
+          "isAndroidBackgroundLocationEnabled": true,
+          "isAndroidForegroundServiceEnabled": true
         }
-      ]
+      ],
+      "expo-notifications",
+      "expo-task-manager"
     ],
     "extra": {
       "eas": {}
