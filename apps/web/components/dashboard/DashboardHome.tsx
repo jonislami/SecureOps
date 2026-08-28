@@ -38,6 +38,7 @@ export function DashboardHome({ user }: { user: { name: string; email: string; r
   const [shiftCounts, setShiftCounts] = useState({ active: 0, assigned: 0 });
   const [cp, setCp] = useState({ scanned: 0, total: 0 });
   const [clock, setClock] = useState('');
+  const [acting, setActing] = useState<string | null>(null);
   const debounce = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
@@ -129,6 +130,17 @@ export function DashboardHome({ user }: { user: { name: string; email: string; r
     }).subscribe();
     return () => { supabase.removeChannel(ch); };
   }, [supabase, load]);
+
+  async function actOnIncident(id: string, kind: 'ack' | 'resolve') {
+    setActing(id);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const rpc = supabase.rpc as any;
+    const { error } = kind === 'ack'
+      ? await rpc('acknowledge_incident', { p_id: id })
+      : await rpc('resolve_incident', { p_id: id, p_note: null });
+    setActing(null);
+    if (!error) await load();
+  }
 
   // Derived.
   const onShift = members.filter((m) => m.status !== 'offline').length;
@@ -288,8 +300,8 @@ export function DashboardHome({ user }: { user: { name: string; email: string; r
                     })()}
                   </div>
                   <div style={{ display: 'flex', gap: 6 }}>
-                    <Link href="/map" className="btn btn-primary" style={{ flex: 1, height: 30, fontSize: 10, letterSpacing: '.09em', background: 'var(--color-alarm)', borderColor: 'var(--color-alarm)', textDecoration: 'none' }}>ACKNOWLEDGE</Link>
-                    <Link href="/map" className="btn btn-secondary" style={{ flex: 1, height: 30, fontSize: 10, letterSpacing: '.09em', textDecoration: 'none' }}>LOCATE</Link>
+                    <button className="btn btn-primary" style={{ flex: 1, height: 30, fontSize: 10, letterSpacing: '.09em', background: 'var(--color-alarm)', borderColor: 'var(--color-alarm)' }} disabled={acting === i.id} onClick={() => actOnIncident(i.id, 'ack')}>{acting === i.id ? '…' : 'ACKNOWLEDGE'}</button>
+                    <button className="btn btn-secondary" style={{ flex: 1, height: 30, fontSize: 10, letterSpacing: '.09em' }} disabled={acting === i.id} onClick={() => actOnIncident(i.id, 'resolve')}>RESOLVE</button>
                   </div>
                 </div>
               ))}

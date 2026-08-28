@@ -8,6 +8,7 @@ import { ShiftCard, type Shift } from '../components/ShiftCard';
 import { AttendanceCard } from '../components/AttendanceCard';
 import { PatrolCard } from '../components/PatrolCard';
 import { TasksCard } from '../components/TasksCard';
+import { SosButton } from '../components/SosButton';
 import { colors } from '../theme';
 
 /** Feature availability per phase — the field capabilities come later. */
@@ -97,6 +98,8 @@ export function HomeScreen() {
 
         {canShare && (
           <>
+            <Text style={styles.sectionTitle}>Emergency</Text>
+            <SosButton />
             <Text style={styles.sectionTitle}>Shift</Text>
             <ShiftCard shift={shift} onChanged={loadShift} />
             {activeShiftId && <AttendanceCard shiftId={activeShiftId} />}
